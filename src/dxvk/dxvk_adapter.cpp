@@ -110,6 +110,111 @@ namespace dxvk {
 
 
   bool DxvkAdapter::checkFeatureSupport(const DxvkDeviceFeatures& required) const {
+    // OHOS: In relaxed mode, skip feature checks and log warnings
+    if (ohosRelaxedDriverFeatures()) {
+      // Log missing features as warnings instead of failing
+      #define OHOS_LOG_MISSING_FEATURE(feature) \
+        if (required.core.features.feature && !m_deviceFeatures.core.features.feature) \
+          Logger::warn("OHOS_DXVK: missing Vulkan feature " #feature)
+
+      // Core features
+      OHOS_LOG_MISSING_FEATURE(robustBufferAccess);
+      OHOS_LOG_MISSING_FEATURE(fullDrawIndexUint32);
+      OHOS_LOG_MISSING_FEATURE(imageCubeArray);
+      OHOS_LOG_MISSING_FEATURE(independentBlend);
+      OHOS_LOG_MISSING_FEATURE(geometryShader);
+      OHOS_LOG_MISSING_FEATURE(tessellationShader);
+      OHOS_LOG_MISSING_FEATURE(sampleRateShading);
+      OHOS_LOG_MISSING_FEATURE(dualSrcBlend);
+      OHOS_LOG_MISSING_FEATURE(logicOp);
+      OHOS_LOG_MISSING_FEATURE(multiDrawIndirect);
+      OHOS_LOG_MISSING_FEATURE(drawIndirectFirstInstance);
+      OHOS_LOG_MISSING_FEATURE(depthClamp);
+      OHOS_LOG_MISSING_FEATURE(depthBiasClamp);
+      OHOS_LOG_MISSING_FEATURE(fillModeNonSolid);
+      OHOS_LOG_MISSING_FEATURE(depthBounds);
+      OHOS_LOG_MISSING_FEATURE(wideLines);
+      OHOS_LOG_MISSING_FEATURE(largePoints);
+      OHOS_LOG_MISSING_FEATURE(alphaToOne);
+      OHOS_LOG_MISSING_FEATURE(multiViewport);
+      OHOS_LOG_MISSING_FEATURE(samplerAnisotropy);
+      OHOS_LOG_MISSING_FEATURE(textureCompressionETC2);
+      OHOS_LOG_MISSING_FEATURE(textureCompressionASTC_LDR);
+      OHOS_LOG_MISSING_FEATURE(textureCompressionBC);
+      OHOS_LOG_MISSING_FEATURE(occlusionQueryPrecise);
+      OHOS_LOG_MISSING_FEATURE(pipelineStatisticsQuery);
+      OHOS_LOG_MISSING_FEATURE(vertexPipelineStoresAndAtomics);
+      OHOS_LOG_MISSING_FEATURE(fragmentStoresAndAtomics);
+      OHOS_LOG_MISSING_FEATURE(shaderTessellationAndGeometryPointSize);
+      OHOS_LOG_MISSING_FEATURE(shaderImageGatherExtended);
+      OHOS_LOG_MISSING_FEATURE(shaderStorageImageExtendedFormats);
+      OHOS_LOG_MISSING_FEATURE(shaderStorageImageMultisample);
+      OHOS_LOG_MISSING_FEATURE(shaderStorageImageReadWithoutFormat);
+      OHOS_LOG_MISSING_FEATURE(shaderStorageImageWriteWithoutFormat);
+      OHOS_LOG_MISSING_FEATURE(shaderUniformBufferArrayDynamicIndexing);
+      OHOS_LOG_MISSING_FEATURE(shaderSampledImageArrayDynamicIndexing);
+      OHOS_LOG_MISSING_FEATURE(shaderStorageBufferArrayDynamicIndexing);
+      OHOS_LOG_MISSING_FEATURE(shaderStorageImageArrayDynamicIndexing);
+      OHOS_LOG_MISSING_FEATURE(shaderClipDistance);
+      OHOS_LOG_MISSING_FEATURE(shaderCullDistance);
+      OHOS_LOG_MISSING_FEATURE(shaderFloat64);
+      OHOS_LOG_MISSING_FEATURE(shaderInt64);
+      OHOS_LOG_MISSING_FEATURE(shaderInt16);
+      OHOS_LOG_MISSING_FEATURE(shaderResourceResidency);
+      OHOS_LOG_MISSING_FEATURE(shaderResourceMinLod);
+      OHOS_LOG_MISSING_FEATURE(sparseBinding);
+      OHOS_LOG_MISSING_FEATURE(sparseResidencyBuffer);
+      OHOS_LOG_MISSING_FEATURE(sparseResidencyImage2D);
+      OHOS_LOG_MISSING_FEATURE(sparseResidencyImage3D);
+      OHOS_LOG_MISSING_FEATURE(sparseResidency2Samples);
+      OHOS_LOG_MISSING_FEATURE(sparseResidency4Samples);
+      OHOS_LOG_MISSING_FEATURE(sparseResidency8Samples);
+      OHOS_LOG_MISSING_FEATURE(sparseResidency16Samples);
+      OHOS_LOG_MISSING_FEATURE(sparseResidencyAliased);
+      OHOS_LOG_MISSING_FEATURE(variableMultisampleRate);
+      OHOS_LOG_MISSING_FEATURE(inheritedQueries);
+
+      #undef OHOS_LOG_MISSING_FEATURE
+
+      // Log missing extension features
+      if (required.shaderDrawParameters.shaderDrawParameters && !m_deviceFeatures.shaderDrawParameters.shaderDrawParameters)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature shaderDrawParameters");
+      if (required.ext4444Formats.formatA4R4G4B4 && !m_deviceFeatures.ext4444Formats.formatA4R4G4B4)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature ext4444Formats.formatA4R4G4B4");
+      if (required.ext4444Formats.formatA4B4G4R4 && !m_deviceFeatures.ext4444Formats.formatA4B4G4R4)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature ext4444Formats.formatA4B4G4R4");
+      if (required.extCustomBorderColor.customBorderColors && !m_deviceFeatures.extCustomBorderColor.customBorderColors)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extCustomBorderColor.customBorderColors");
+      if (required.extCustomBorderColor.customBorderColorWithoutFormat && !m_deviceFeatures.extCustomBorderColor.customBorderColorWithoutFormat)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extCustomBorderColor.customBorderColorWithoutFormat");
+      if (required.extDepthClipEnable.depthClipEnable && !m_deviceFeatures.extDepthClipEnable.depthClipEnable)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extDepthClipEnable.depthClipEnable");
+      if (required.extExtendedDynamicState.extendedDynamicState && !m_deviceFeatures.extExtendedDynamicState.extendedDynamicState)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extExtendedDynamicState.extendedDynamicState");
+      if (required.extHostQueryReset.hostQueryReset && !m_deviceFeatures.extHostQueryReset.hostQueryReset)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extHostQueryReset.hostQueryReset");
+      if (required.extMemoryPriority.memoryPriority && !m_deviceFeatures.extMemoryPriority.memoryPriority)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extMemoryPriority.memoryPriority");
+      if (required.extNonSeamlessCubeMap.nonSeamlessCubeMap && !m_deviceFeatures.extNonSeamlessCubeMap.nonSeamlessCubeMap)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extNonSeamlessCubeMap.nonSeamlessCubeMap");
+      if (required.extRobustness2.robustBufferAccess2 && !m_deviceFeatures.extRobustness2.robustBufferAccess2)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extRobustness2.robustBufferAccess2");
+      if (required.extRobustness2.robustImageAccess2 && !m_deviceFeatures.extRobustness2.robustImageAccess2)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extRobustness2.robustImageAccess2");
+      if (required.extRobustness2.nullDescriptor && !m_deviceFeatures.extRobustness2.nullDescriptor)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extRobustness2.nullDescriptor");
+      if (required.extTransformFeedback.transformFeedback && !m_deviceFeatures.extTransformFeedback.transformFeedback)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extTransformFeedback.transformFeedback");
+      if (required.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor && !m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor");
+      if (required.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor && !m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor");
+      if (required.khrTimelineSemaphore.timelineSemaphore && !m_deviceFeatures.khrTimelineSemaphore.timelineSemaphore)
+        Logger::warn("OHOS_DXVK: missing Vulkan feature khrTimelineSemaphore.timelineSemaphore");
+
+      return true;  // In relaxed mode, always return true
+    }
+
     return (m_deviceFeatures.core.features.robustBufferAccess
                 || !required.core.features.robustBufferAccess)
         && (m_deviceFeatures.core.features.fullDrawIndexUint32
