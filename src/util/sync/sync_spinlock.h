@@ -7,6 +7,14 @@
 #include "../util_bit.h"
 #include "../util_likely.h"
 
+#if defined(__aarch64__) || defined(__arm64ec__) || defined(_M_ARM64EC)
+#if defined(__GNUC__) || defined(__clang__)
+#define _mm_pause() __builtin_arm_yield()
+#else
+#define _mm_pause() __yield()
+#endif
+#endif
+
 namespace dxvk::sync {
 
   /**
