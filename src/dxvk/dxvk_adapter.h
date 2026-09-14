@@ -3,9 +3,18 @@
 #include "dxvk_device_info.h"
 #include "dxvk_extensions.h"
 #include "dxvk_include.h"
+#include "../util/util_env.h"
 
 namespace dxvk {
-  
+
+  // OHOS relaxed driver features support
+  // When enabled via OHOS_DXVK_FEATURES=1, allows creating D3D11 devices
+  // on GPUs that don't support all required Vulkan features
+  static bool ohosRelaxedDriverFeatures() {
+    static const bool enabled = env::getEnvVar("OHOS_DXVK_FEATURES") == "1";
+    return enabled;
+  }
+
   class DxvkDevice;
   class DxvkInstance;
   

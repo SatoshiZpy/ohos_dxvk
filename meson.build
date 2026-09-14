@@ -58,6 +58,9 @@ dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'
+elif (cpu_family == 'aarch64')
+  # arm64ec: 导入库由 ohos/script/build_dxvk.sh 生成 (lld-link /MACHINE:ARM64EC)
+  dxvk_library_path = meson.source_root() + '/lib-arm64ec'
 else
   dxvk_library_path = meson.source_root() + '/lib32'
 endif

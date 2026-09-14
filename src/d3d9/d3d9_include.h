@@ -78,11 +78,17 @@
 #endif
 
 // MinGW headers are broken. Who'dve guessed?
+// 本项目工具链分两类, dummy 补齐只在旧头下需要:
+//   x86 (Ubuntu mingw-w64 gcc): d3d9types.h 没有该结构, 需 dxvk 补
+//   arm64ec (llvm-mingw, 新 mingw-w64 头): d3d9types.h 已有完整定义,
+//     重复 typedef 会报重定义错误, 必须跳过
 #ifndef _MSC_VER
+#if !defined(__aarch64__) && !defined(__arm64ec__)
 typedef struct _D3DDEVINFO_RESOURCEMANAGER
 {
   char dummy;
 } D3DDEVINFO_RESOURCEMANAGER, * LPD3DDEVINFO_RESOURCEMANAGER;
+#endif
 
 #ifndef __WINE__
 extern "C" WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);

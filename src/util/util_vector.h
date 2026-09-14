@@ -150,12 +150,20 @@ namespace dxvk {
   static_assert(sizeof(Vector4i) == sizeof(int)   * 4);
 
   inline Vector4 replaceNaN(Vector4 a) {
+    #if defined(__aarch64__) || defined(__arm64ec__) || defined(_M_ARM64EC)
+    // No SSE on arm64/arm64ec: NaN replaced by plain scalar comparison
+    Vector4 result;
+    for (uint32_t i = 0; i < 4; i++)
+      result.data[i] = a.data[i] == a.data[i] ? a.data[i] : 0.0f;
+    return result;
+    #else
     Vector4 result;
     __m128 value = _mm_load_ps(a.data);
     __m128 mask  = _mm_cmpeq_ps(value, value);
            value = _mm_and_ps(value, mask);
     _mm_store_ps(result.data, value);
     return result;
+    #endif
   }
 
 }
