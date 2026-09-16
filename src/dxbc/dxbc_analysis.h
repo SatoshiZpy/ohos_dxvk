@@ -33,6 +33,9 @@ namespace dxvk {
    */
   struct DxbcSrvInfo {
     bool sparseFeedback  = false;
+#ifdef __OHOS__
+    bool accessCubeArrayDref = false;
+#endif
   };
 
   /**

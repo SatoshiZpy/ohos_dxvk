@@ -7,6 +7,9 @@
 #include "dxvk_extensions.h"
 #include "dxvk_include.h"
 #include "dxvk_format.h"
+#ifdef __OHOS__
+#include "../util/util_env.h"
+#endif
 
 namespace dxvk {
   
@@ -137,6 +140,17 @@ namespace dxvk {
     const DxvkDeviceInfo& devicePropertiesExt() const {
       return m_deviceInfo;
     }
+
+#ifdef __OHOS__
+    /**
+     * \brief Relaxed driver switch for Maleoon capability gaps
+     * Activated by DXVK_RELAX_FEATURES=1 env var.
+     */
+    bool isRelaxedDriver() const {
+      static const bool enabled = env::getEnvVar("DXVK_RELAX_FEATURES") == "1";
+      return enabled;
+    }
+#endif
     
     /**
      * \brief Supportred device features
