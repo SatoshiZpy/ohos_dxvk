@@ -81,6 +81,9 @@ namespace dxvk {
     uint32_t          depthTypeId   = 0;
     uint32_t          structStride  = 0;
     bool              isRawSsbo     = false;
+#ifdef __OHOS__
+    bool              emulateCubeArrayDref = false;
+#endif
   };
   
   

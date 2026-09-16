@@ -1938,16 +1938,32 @@ namespace dxvk {
     DxvkDeviceFeatures supported = Adapter->features();
     DxvkDeviceFeatures enabled   = {};
 
+#ifdef __OHOS__
+    const bool relaxed = Adapter->isRelaxedDriver();
+    if (relaxed)
+      Logger::info("OHOS: applying relaxed driver capability policy");
+#endif
+
     // Required for feature level 10_1
     enabled.core.features.depthBiasClamp                          = VK_TRUE;
     enabled.core.features.depthClamp                              = VK_TRUE;
-    enabled.core.features.dualSrcBlend                            = VK_TRUE;
+    enabled.core.features.dualSrcBlend                            =
+#ifdef __OHOS__
+      (relaxed ? supported.core.features.dualSrcBlend : VK_TRUE);
+#else
+      VK_TRUE;
+#endif
     enabled.core.features.fillModeNonSolid                        = VK_TRUE;
     enabled.core.features.fullDrawIndexUint32                     = VK_TRUE;
     enabled.core.features.geometryShader                          = VK_TRUE;
     enabled.core.features.imageCubeArray                          = VK_TRUE;
     enabled.core.features.independentBlend                        = VK_TRUE;
-    enabled.core.features.multiViewport                           = VK_TRUE;
+    enabled.core.features.multiViewport                           =
+#ifdef __OHOS__
+      (relaxed ? supported.core.features.multiViewport : VK_TRUE);
+#else
+      VK_TRUE;
+#endif
     enabled.core.features.occlusionQueryPrecise                   = VK_TRUE;
     enabled.core.features.pipelineStatisticsQuery                 = supported.core.features.pipelineStatisticsQuery;
     enabled.core.features.sampleRateShading                       = VK_TRUE;
@@ -1955,7 +1971,12 @@ namespace dxvk {
     enabled.core.features.shaderClipDistance                      = VK_TRUE;
     enabled.core.features.shaderCullDistance                      = VK_TRUE;
     enabled.core.features.shaderImageGatherExtended               = VK_TRUE;
-    enabled.core.features.textureCompressionBC                    = VK_TRUE;
+    enabled.core.features.textureCompressionBC                    =
+#ifdef __OHOS__
+      (relaxed ? supported.core.features.textureCompressionBC : VK_TRUE);
+#else
+      VK_TRUE;
+#endif
 
     enabled.vk12.samplerMirrorClampToEdge                         = VK_TRUE;
 
@@ -1964,8 +1985,18 @@ namespace dxvk {
     enabled.extCustomBorderColor.customBorderColors               = supported.extCustomBorderColor.customBorderColorWithoutFormat;
     enabled.extCustomBorderColor.customBorderColorWithoutFormat   = supported.extCustomBorderColor.customBorderColorWithoutFormat;
 
-    enabled.extTransformFeedback.transformFeedback                = VK_TRUE;
-    enabled.extTransformFeedback.geometryStreams                  = VK_TRUE;
+    enabled.extTransformFeedback.transformFeedback                =
+#ifdef __OHOS__
+      (relaxed ? supported.extTransformFeedback.transformFeedback : VK_TRUE);
+#else
+      VK_TRUE;
+#endif
+    enabled.extTransformFeedback.geometryStreams                  =
+#ifdef __OHOS__
+      (relaxed ? supported.extTransformFeedback.geometryStreams : VK_TRUE);
+#else
+      VK_TRUE;
+#endif
 
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;

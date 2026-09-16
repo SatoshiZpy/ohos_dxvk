@@ -966,7 +966,22 @@ namespace dxvk {
     
     // Declare the resource type
     const uint32_t sampledTypeId = getScalarTypeId(sampledType);
-    const DxbcImageInfo typeInfo = getResourceType(resourceType, isUav);    
+    DxbcImageInfo typeInfo = getResourceType(resourceType, isUav);
+
+#ifdef __OHOS__
+    // B2: CubeArray Dref → 2D-array emulation for Maleoon
+    const bool emulateCubeArrayDref =
+      !isUav
+      && resourceType == DxbcResourceDim::TextureCubeArr
+      && m_moduleInfo.options.emulateCubeArrayDref
+      && m_analysis->srvInfos[registerId].accessCubeArrayDref;
+
+    if (emulateCubeArrayDref) {
+      typeInfo.dim = spv::Dim2D;
+      typeInfo.array = 1;
+      typeInfo.vtype = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    }
+#endif
     
     // Declare additional capabilities if necessary
     switch (resourceType) {
@@ -1059,6 +1074,9 @@ namespace dxvk {
       res.depthTypeId   = 0;
       res.structStride  = 0;
       res.isRawSsbo     = false;
+#ifdef __OHOS__
+      res.emulateCubeArrayDref = emulateCubeArrayDref;
+#endif
       
       if ((sampledType == DxbcScalarType::Float32)
        && (resourceType == DxbcResourceDim::Texture1D
@@ -3999,6 +4017,23 @@ namespace dxvk {
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
+
+#ifdef __OHOS__
+    // B1: Pad vec3 Cube Dref coordinate to vec4(direction, dref) for Maleoon
+    DxbcRegisterValue depthCompareCoord = coord;
+    if (isDepthCompare
+     && m_moduleInfo.options.padCubeDrefCoordinates
+     && m_programInfo.type() == DxbcProgramType::PixelShader
+     && texture.imageInfo.dim == spv::DimCube
+     && !texture.imageInfo.array)
+      depthCompareCoord = emitRegisterConcat(coord, referenceValue);
+
+    // B2: CubeArray Dref → 2D-array coordinate transform for Maleoon
+    if (isDepthCompare
+     && m_moduleInfo.options.emulateCubeArrayDref
+     && texture.emulateCubeArrayDref)
+      coord = emitCubeArrayTo2DArrayCoord(coord);
+#endif
     
     // Load explicit gradients for sample operations that require them
     const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD
@@ -4091,7 +4126,12 @@ namespace dxvk {
         case DxbcOpcode::SampleC:
         case DxbcOpcode::SampleCClampS: {
           resultId = m_module.opImageSampleDrefImplicitLod(
-            resultTypeId, sampledImageId, coord.id,
+            resultTypeId, sampledImageId,
+#ifdef __OHOS__
+            depthCompareCoord.id,
+#else
+            coord.id,
+#endif
             referenceValue.id, imageOperands);
         } break;
 
@@ -4102,7 +4142,12 @@ namespace dxvk {
           imageOperands.sLod = m_module.constf32(0.0f);
 
           resultId = m_module.opImageSampleDrefExplicitLod(
-            resultTypeId, sampledImageId, coord.id,
+            resultTypeId, sampledImageId,
+#ifdef __OHOS__
+            depthCompareCoord.id,
+#else
+            coord.id,
+#endif
             referenceValue.id, imageOperands);
         } break;
 
@@ -7258,7 +7303,40 @@ namespace dxvk {
 
     if (m_moduleInfo.options.useDepthClipWorkaround)
       this->emitOutputDepthClamp();
-    
+
+#ifdef __OHOS__
+    // B3: Single-sample A2C discard for Maleoon
+    // Maleoon accepts alphaToCoverageEnable on single-sample pipelines but
+    // does not kill fully transparent fragments. Insert a spec-constant-gated
+    // OpKill for alpha <= 0 when o0 is float vec4.
+    if (m_oRegs[0].id != 0
+     && m_oRegs[0].type.ctype == DxbcScalarType::Float32
+     && m_oRegs[0].type.ccount >= 4) {
+      const uint32_t enabled = m_module.opSpecConstant(
+        m_module.defIntType(32, 0), 0);
+      m_module.decorateSpecId(enabled, 11); // spec constant ID 11
+
+      const DxbcRegisterValue color = emitValueLoad(m_oRegs[0]);
+      const uint32_t alphaComponent = 3;
+      const uint32_t alpha = m_module.opCompositeExtract(
+        m_module.defFloatType(32), color.id, 1, &alphaComponent);
+      const uint32_t fallbackEnabled = m_module.opINotEqual(
+        m_module.defBoolType(), enabled, m_module.constu32(0));
+      const uint32_t transparent = m_module.opFOrdLessThanEqual(
+        m_module.defBoolType(), alpha, m_module.constf32(0.0f));
+      const uint32_t discard = m_module.opLogicalAnd(
+        m_module.defBoolType(), fallbackEnabled, transparent);
+
+      const uint32_t labelIf = m_module.allocateId();
+      const uint32_t labelEnd = m_module.allocateId();
+      m_module.opSelectionMerge(labelEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(discard, labelIf, labelEnd);
+      m_module.opLabel(labelIf);
+      m_module.opKill();
+      m_module.opLabel(labelEnd);
+    }
+#endif
+
     this->emitFunctionEnd();
   }
   
@@ -8260,5 +8338,70 @@ namespace dxvk {
       default:                        return nullptr;
     }
   }
-  
+
+#ifdef __OHOS__
+  DxbcRegisterValue DxbcCompiler::emitCubeArrayTo2DArrayCoord(
+          DxbcRegisterValue       coord) {
+    const DxbcVectorType floatType = { DxbcScalarType::Float32, 1 };
+    const DxbcVectorType boolType  = { DxbcScalarType::Bool, 1 };
+    const uint32_t tFloat = getVectorTypeId(floatType);
+    const uint32_t tBool  = getVectorTypeId(boolType);
+
+    const DxbcRegisterValue x = emitRegisterExtract(coord, DxbcRegMask(true, false, false, false));
+    const DxbcRegisterValue y = emitRegisterExtract(coord, DxbcRegMask(false, true, false, false));
+    const DxbcRegisterValue z = emitRegisterExtract(coord, DxbcRegMask(false, false, true, false));
+    const DxbcRegisterValue cube = emitRegisterExtract(coord, DxbcRegMask(false, false, false, true));
+    const DxbcRegisterValue ax = emitRegisterAbsolute(x);
+    const DxbcRegisterValue ay = emitRegisterAbsolute(y);
+    const DxbcRegisterValue az = emitRegisterAbsolute(z);
+
+    const uint32_t zero = m_module.constf32(0.0f);
+    const uint32_t xMajor = m_module.opLogicalAnd(tBool,
+      m_module.opFOrdGreaterThanEqual(tBool, ax.id, ay.id),
+      m_module.opFOrdGreaterThanEqual(tBool, ax.id, az.id));
+    const uint32_t yMajor = m_module.opLogicalAnd(tBool,
+      m_module.opLogicalNot(tBool, xMajor),
+      m_module.opFOrdGreaterThanEqual(tBool, ay.id, az.id));
+
+    const uint32_t xPos = m_module.opFOrdGreaterThanEqual(tBool, x.id, zero);
+    const uint32_t yPos = m_module.opFOrdGreaterThanEqual(tBool, y.id, zero);
+    const uint32_t zPos = m_module.opFOrdGreaterThanEqual(tBool, z.id, zero);
+
+    auto selectFloat = [&](uint32_t cond, uint32_t a, uint32_t b) {
+      return m_module.opSelect(tFloat, cond, a, b);
+    };
+
+    // Major axis selection
+    const uint32_t ma = selectFloat(xMajor, ax.id, selectFloat(yMajor, ay.id, az.id));
+    const uint32_t sc = selectFloat(xMajor, selectFloat(xPos, z.id, m_module.opFNegate(tFloat, z.id)),
+                             selectFloat(yMajor, selectFloat(yPos, x.id, m_module.opFNegate(tFloat, x.id)),
+                                        selectFloat(zPos, x.id, m_module.opFNegate(tFloat, x.id))));
+    const uint32_t tc = selectFloat(xMajor, selectFloat(xPos, y.id, m_module.opFNegate(tFloat, y.id)),
+                             selectFloat(yMajor, selectFloat(yPos, z.id, m_module.opFNegate(tFloat, z.id)),
+                                        selectFloat(zPos, y.id, m_module.opFNegate(tFloat, y.id))));
+
+    // face index: 0=+X 1=-X 2=+Y 3=-Y 4=+Z 5=-Z
+    const uint32_t faceIdx = selectFloat(xMajor, selectFloat(xPos, m_module.constf32(0.0f), m_module.constf32(1.0f)),
+                                  selectFloat(yMajor, selectFloat(yPos, m_module.constf32(2.0f), m_module.constf32(3.0f)),
+                                             selectFloat(zPos, m_module.constf32(4.0f), m_module.constf32(5.0f))));
+
+    // u = (sc/ma + 1) * 0.5, v = (tc/ma + 1) * 0.5
+    const uint32_t invMa = m_module.opFDiv(tFloat, m_module.constf32(1.0f), ma);
+    const uint32_t u = m_module.opFMul(tFloat, m_module.opFAdd(tFloat, m_module.opFMul(tFloat, sc, invMa), m_module.constf32(1.0f)), m_module.constf32(0.5f));
+    const uint32_t v = m_module.opFMul(tFloat, m_module.opFAdd(tFloat, m_module.opFMul(tFloat, tc, invMa), m_module.constf32(1.0f)), m_module.constf32(0.5f));
+
+    // layer = floor(cube + 0.5) * 6 + face
+    const uint32_t cubeRounded = m_module.opFloor(tFloat, m_module.opFAdd(tFloat, cube.id, m_module.constf32(0.5f)));
+    const uint32_t layer = m_module.opFAdd(tFloat, m_module.opFMul(tFloat, cubeRounded, m_module.constf32(6.0f)), faceIdx);
+
+    // Return vec3(u, v, layer)
+    DxbcRegisterValue result;
+    result.type = { DxbcScalarType::Float32, 3 };
+    uint32_t components[3] = { u, v, layer };
+    result.id = m_module.opCompositeConstruct(
+      getVectorTypeId(result.type), 3, components);
+    return result;
+  }
+#endif
+
 }

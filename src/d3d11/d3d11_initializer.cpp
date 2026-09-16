@@ -3,6 +3,9 @@
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 #include "d3d11_initializer.h"
+#ifdef __OHOS__
+#include "d3d11_bc.h"
+#endif
 
 namespace dxvk {
 
@@ -164,6 +167,21 @@ namespace dxvk {
     VkFormat packedFormat = m_parent->LookupPackedFormat(desc->Format, pTexture->GetFormatMode()).Format;
     auto formatInfo = lookupFormatInfo(packedFormat);
 
+#ifdef __OHOS__
+    // BC emulation: detect if packed format is BC but image uses
+    // an uncompressed format (due to Maleoon driver remapping in dxgi_format.cpp).
+    // Uses WineHua 2.6.2 approach: packedFormat from g_dxgiFormats is original BC,
+    // image format is remapped (non-BC) from m_dxgiFormats.
+    const bool bcEmulated = pTexture->HasImage()
+                         && formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)
+                         && !image->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed);
+    const VkFormat uploadFormat = bcEmulated ? image->info().format : packedFormat;
+    const auto uploadFormatInfo = lookupFormatInfo(uploadFormat);
+#else
+    const VkFormat uploadFormat = packedFormat;
+    const auto uploadFormatInfo = formatInfo;
+#endif
+
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       // Compute data size for all subresources and allocate staging buffer memory
       DxvkBufferSlice stagingSlice;
@@ -173,7 +191,7 @@ namespace dxvk {
 
         for (uint32_t mip = 0; mip < image->info().mipLevels; mip++) {
           dataSize += image->info().numLayers * align(util::computeImageDataSize(
-            packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask), CACHE_LINE_SIZE);
+            uploadFormat, image->mipLevelExtent(mip), uploadFormatInfo->aspectMask), CACHE_LINE_SIZE);
         }
 
         stagingSlice = m_stagingBuffer.alloc(dataSize);
@@ -190,13 +208,34 @@ namespace dxvk {
 
           if (pTexture->HasImage()) {
             VkDeviceSize mipSizePerLayer = util::computeImageDataSize(
-              packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask);
+              uploadFormat, image->mipLevelExtent(mip), uploadFormatInfo->aspectMask);
 
             m_transferCommands += 1;
 
+#ifdef __OHOS__
+            if (bcEmulated) {
+              // Decompress BC data to uncompressed format before uploading.
+              // Use packedFormat (original BC from g_dxgiFormats) as input format.
+              D3D11CpuImage converted;
+              if (!DecodeD3D11BcImage(packedFormat, mipLevelExtent,
+                    pInitialData[index].pSysMem, pInitialData[index].SysMemPitch,
+                    pInitialData[index].SysMemSlicePitch, converted)
+               || converted.data.size() != mipSizePerLayer)
+                throw DxvkError("OHOS: Failed to decompress initial BC texture data");
+              util::packImageData(stagingSlice.mapPtr(dataOffset),
+                converted.data.data(), converted.rowPitch, converted.slicePitch,
+                0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1,
+                uploadFormatInfo, uploadFormatInfo->aspectMask);
+            } else {
+              util::packImageData(stagingSlice.mapPtr(dataOffset),
+                pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
+                0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
+            }
+#else
             util::packImageData(stagingSlice.mapPtr(dataOffset),
               pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
               0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
+#endif
 
             dataOffset += align(mipSizePerLayer, CACHE_LINE_SIZE);
           }
@@ -214,7 +253,11 @@ namespace dxvk {
         EmitCs([
           cImage        = std::move(image),
           cStagingSlice = std::move(stagingSlice),
+#ifdef __OHOS__
+          cFormat       = uploadFormat
+#else
           cFormat       = packedFormat
+#endif
         ] (DxvkContext* ctx) {
           ctx->uploadImage(cImage,
             cStagingSlice.buffer(),

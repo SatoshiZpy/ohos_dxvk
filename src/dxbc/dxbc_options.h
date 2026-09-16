@@ -63,6 +63,19 @@ namespace dxvk {
     /// Whether to enable sincos emulation
     bool sincosEmulation = false;
 
+#ifdef __OHOS__
+    /// Pad non-array Cube comparison coordinates with the Dref value.
+    /// Maleoon fragment compiler miscompiles OpImageSampleDref* with vec3.
+    bool padCubeDrefCoordinates = false;
+
+    /// Replace CubeArray sampling with 2D-array view + shader face selection
+    /// for comparison sampling. Maleoon hangs on native CubeArray Dref.
+    bool emulateCubeArrayDref = false;
+
+    /// Emulate custom border color via shader UBO when driver lacks support
+    bool emulateCustomBorderColor = false;
+#endif
+
     /// Float control flags
     DxbcFloatControlFlags floatControl;
 
