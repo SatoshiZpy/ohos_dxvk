@@ -59,7 +59,6 @@ d3d11_src = [
   'd3d11_view_rtv.cpp',
   'd3d11_view_srv.cpp',
   'd3d11_view_uav.cpp',
-  'd3d11_bc.cpp',
 ]
 
 d3d11_shaders = files([

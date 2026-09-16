@@ -1266,13 +1266,6 @@ namespace dxvk {
     void opReturn();
     
     void opDemoteToHelperInvocation();
-
-#ifdef __OHOS__
-    uint32_t opSpecConstant(
-            uint32_t                typeId,
-            uint32_t                value);
-    void opKill();
-#endif
     
     void opEmitVertex(
             uint32_t                streamId);

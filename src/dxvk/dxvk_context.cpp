@@ -6231,16 +6231,6 @@ namespace dxvk {
     if (unlikely(!pipelineInfo.handle))
       return false;
 
-#ifdef __OHOS__
-    // B3: Set spec constant 11 for single-sample A2C discard
-    if (m_state.gp.constants.mask & (1u << 11)) {
-      const bool singleSampleA2C =
-        m_state.gp.state.ms.sampleCount() == VK_SAMPLE_COUNT_1_BIT
-        && m_state.gp.state.ms.enableAlphaToCoverage();
-      m_state.gp.state.sc.specConstants[11] = singleSampleA2C ? 1u : 0u;
-    }
-#endif
-
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.handle);
 

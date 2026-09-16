@@ -868,52 +868,6 @@ namespace dxvk {
           VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO,
           VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R });
     }
-
-#ifdef __OHOS__
-    // Maleoon driver may report BC format support but fail to create BC images.
-    // Force remap on Maleoon to avoid E_INVALIDARG at texture creation.
-    if (device->adapter()->isRelaxedDriver()) {
-      Logger::info("OHOS: Maleoon driver, remapping BC formats to uncompressed");
-      const VkComponentMapping swizzle = {
-        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-
-      // BC1 (DXT1) -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC1_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC1_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC1_UNORM_SRGB,  VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
-
-      // BC2 (DXT3) -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC2_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC2_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC2_UNORM_SRGB, VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
-
-      // BC3 (DXT5) -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC3_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC3_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC3_UNORM_SRGB, VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
-
-      // BC4 (ATI1) -> R8
-      RemapColorFormat(DXGI_FORMAT_BC4_TYPELESS, VK_FORMAT_R8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC4_UNORM,    VK_FORMAT_R8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC4_SNORM,    VK_FORMAT_R8_SNORM, swizzle);
-
-      // BC5 (ATI2) -> R8G8
-      RemapColorFormat(DXGI_FORMAT_BC5_TYPELESS, VK_FORMAT_R8G8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC5_UNORM,    VK_FORMAT_R8G8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC5_SNORM,    VK_FORMAT_R8G8_SNORM, swizzle);
-
-      // BC6H (HDR) -> R16G16B16A16_SFLOAT
-      RemapColorFormat(DXGI_FORMAT_BC6H_TYPELESS, VK_FORMAT_R16G16B16A16_SFLOAT, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC6H_UF16,    VK_FORMAT_R16G16B16A16_SFLOAT, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC6H_SF16,    VK_FORMAT_R16G16B16A16_SFLOAT, swizzle);
-
-      // BC7 -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC7_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC7_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC7_UNORM_SRGB,  VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
-    }
-#endif
   }
   
   

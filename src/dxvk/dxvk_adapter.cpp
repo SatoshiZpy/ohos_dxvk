@@ -170,22 +170,6 @@ namespace dxvk {
        || !required.feature)
 
   bool DxvkAdapter::checkFeatureSupport(const DxvkDeviceFeatures& required) const {
-#ifdef __OHOS__
-    if (isRelaxedDriver()) {
-      // On Maleoon driver, log missing features as warnings instead of failing
-      if (required.core.features.dualSrcBlend && !m_deviceFeatures.core.features.dualSrcBlend)
-        Logger::warn("OHOS: missing Vulkan feature dualSrcBlend");
-      if (required.core.features.multiViewport && !m_deviceFeatures.core.features.multiViewport)
-        Logger::warn("OHOS: missing Vulkan feature multiViewport");
-      if (required.core.features.textureCompressionBC && !m_deviceFeatures.core.features.textureCompressionBC)
-        Logger::warn("OHOS: missing Vulkan feature textureCompressionBC");
-      if (required.extTransformFeedback.transformFeedback && !m_deviceFeatures.extTransformFeedback.transformFeedback)
-        Logger::warn("OHOS: missing Vulkan feature transformFeedback");
-      if (required.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor && !m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
-        Logger::warn("OHOS: missing Vulkan feature vertexAttributeInstanceRateDivisor");
-      return true;
-    }
-#endif
     return CHECK_FEATURE_NEED(core.features.robustBufferAccess)
         && CHECK_FEATURE_NEED(core.features.fullDrawIndexUint32)
         && CHECK_FEATURE_NEED(core.features.imageCubeArray)

@@ -54,17 +54,6 @@ namespace dxvk {
                    || device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS);
     applyTristate(sincosEmulation, options.sincosEmulation);
 
-#ifdef __OHOS__
-    // Maleoon shader compiler quirks — activated by DXVK_RELAX_FEATURES env
-    if (adapter->isRelaxedDriver()) {
-      padCubeDrefCoordinates = true;
-      emulateCubeArrayDref = true;
-    }
-
-    // Custom border color emulation when driver lacks support
-    emulateCustomBorderColor = !devFeatures.extCustomBorderColor.customBorderColorWithoutFormat;
-#endif
-
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
       if (devInfo.vk12.shaderSignedZeroInfNanPreserveFloat32)

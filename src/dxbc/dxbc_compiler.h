@@ -903,11 +903,6 @@ namespace dxvk {
     DxbcRegisterValue emitRegisterConcat(
             DxbcRegisterValue       value1,
             DxbcRegisterValue       value2);
-
-#ifdef __OHOS__
-    DxbcRegisterValue emitCubeArrayTo2DArrayCoord(
-            DxbcRegisterValue       coord);
-#endif
     
     DxbcRegisterValue emitRegisterExtend(
             DxbcRegisterValue       value,

@@ -4082,21 +4082,4 @@ namespace dxvk {
     }
   }
 
-#ifdef __OHOS__
-  uint32_t SpirvModule::opSpecConstant(
-          uint32_t                typeId,
-          uint32_t                value) {
-    uint32_t resultId = this->allocateId();
-    m_code.putIns(spv::OpSpecConstant, 4);
-    m_code.putWord(typeId);
-    m_code.putWord(resultId);
-    m_code.putWord(value);
-    return resultId;
-  }
-
-  void SpirvModule::opKill() {
-    m_code.putIns(spv::OpKill, 1);
-  }
-#endif
-
 }
