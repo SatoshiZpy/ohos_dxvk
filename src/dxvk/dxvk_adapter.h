@@ -3,21 +3,14 @@
 #include "dxvk_device_info.h"
 #include "dxvk_extensions.h"
 #include "dxvk_include.h"
+#ifdef __OHOS__
 #include "../util/util_env.h"
+#endif
 
 namespace dxvk {
 
-  // OHOS relaxed driver features support
-  // When enabled via OHOS_DXVK_FEATURES=1, allows creating D3D11 devices
-  // on GPUs that don't support all required Vulkan features
-  static bool ohosRelaxedDriverFeatures() {
-    static const bool enabled = env::getEnvVar("OHOS_DXVK_FEATURES") == "1";
-    return enabled;
-  }
-
   class DxvkDevice;
-  class DxvkInstance;
-  
+  class DxvkInstance;  
   /**
    * \brief GPU vendors
    * Based on PCIe IDs.
@@ -101,6 +94,17 @@ namespace dxvk {
     const VkPhysicalDeviceProperties& deviceProperties() const {
       return m_deviceInfo.core.properties;
     }
+
+#ifdef __OHOS__
+    /**
+     * \brief Relaxed driver switch for Maleoon capability gaps
+     * Activated by DXVK_RELAX_FEATURES=1 env var.
+     */
+    bool isRelaxedDriver() const {
+      static const bool enabled = env::getEnvVar("DXVK_RELAX_FEATURES") == "1";
+      return enabled;
+    }
+#endif
 
     /**
      * \brief Device info

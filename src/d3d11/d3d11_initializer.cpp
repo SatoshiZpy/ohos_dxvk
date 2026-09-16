@@ -3,6 +3,10 @@
 #include "d3d11_device.h"
 #include "d3d11_initializer.h"
 
+#ifdef __OHOS__
+#include "d3d11_bc.h"
+#endif
+
 namespace dxvk {
 
   D3D11Initializer::D3D11Initializer(
@@ -125,6 +129,14 @@ namespace dxvk {
     VkFormat packedFormat = m_parent->LookupPackedFormat(desc->Format, pTexture->GetFormatMode()).Format;
     auto formatInfo = imageFormatInfo(packedFormat);
 
+#ifdef __OHOS__
+    // BC emulation: detect if packed format is BC but image uses
+    // an uncompressed format (due to Maleoon driver remapping).
+    const bool bcEmulated = image != nullptr
+                         && formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)
+                         && !image->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed);
+#endif
+
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       // pInitialData is an array that stores an entry for
       // every single subresource. Since we will define all
@@ -148,6 +160,21 @@ namespace dxvk {
             subresourceLayers.layerCount     = 1;
             
             if (formatInfo->aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+#ifdef __OHOS__
+              if (bcEmulated) {
+                // Decompress BC data before uploading
+                D3D11CpuImage converted;
+                if (!DecodeD3D11BcImage(packedFormat, mipLevelExtent,
+                      pInitialData[id].pSysMem, pInitialData[id].SysMemPitch,
+                      pInitialData[id].SysMemSlicePitch, converted))
+                  throw DxvkError("OHOS: Failed to decompress initial BC texture data");
+                m_context->uploadImage(
+                  image, subresourceLayers,
+                  converted.data.data(),
+                  converted.rowPitch,
+                  converted.slicePitch);
+              } else
+#endif
               m_context->uploadImage(
                 image, subresourceLayers,
                 pInitialData[id].pSysMem,

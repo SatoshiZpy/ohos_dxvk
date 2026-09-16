@@ -40,6 +40,7 @@ d3d11_src = [
   'd3d11_fence.cpp',
   'd3d11_gdi.cpp',
   'd3d11_initializer.cpp',
+  'd3d11_bc.cpp',
   'd3d11_input_layout.cpp',
   'd3d11_interop.cpp',
   'd3d11_main.cpp',

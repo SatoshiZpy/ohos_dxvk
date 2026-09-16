@@ -82,8 +82,9 @@
 //   x86 (Ubuntu mingw-w64 gcc): d3d9types.h 没有该结构, 需 dxvk 补
 //   arm64ec (llvm-mingw, 新 mingw-w64 头): d3d9types.h 已有完整定义,
 //     重复 typedef 会报重定义错误, 必须跳过
+//   OHOS 构建统一跳过 (系统 mingw 头可能已更新含此定义)
 #ifndef _MSC_VER
-#if !defined(__aarch64__) && !defined(__arm64ec__)
+#if !defined(__aarch64__) && !defined(__arm64ec__) && !defined(__OHOS__)
 typedef struct _D3DDEVINFO_RESOURCEMANAGER
 {
   char dummy;

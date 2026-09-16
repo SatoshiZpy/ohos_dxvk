@@ -1964,7 +1964,17 @@ namespace dxvk {
       enabled.core.features.samplerAnisotropy                     = supported.core.features.samplerAnisotropy;
       enabled.core.features.shaderClipDistance                    = VK_TRUE;
       enabled.core.features.shaderCullDistance                    = VK_TRUE;
+#ifdef __OHOS__
+      {
+        const bool relaxed = adapter->isRelaxedDriver();
+        if (relaxed)
+          Logger::info("OHOS: applying relaxed driver capability policy");
+        enabled.core.features.textureCompressionBC = relaxed
+          ? supported.core.features.textureCompressionBC : VK_TRUE;
+      }
+#else
       enabled.core.features.textureCompressionBC                  = VK_TRUE;
+#endif
       enabled.extDepthClipEnable.depthClipEnable                  = supported.extDepthClipEnable.depthClipEnable;
       enabled.extHostQueryReset.hostQueryReset                    = VK_TRUE;
     }

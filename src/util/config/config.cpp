@@ -4,6 +4,7 @@
 #include <iostream>
 #include <regex>
 #include <utility>
+#include <algorithm>
 
 #include "config.h"
 
