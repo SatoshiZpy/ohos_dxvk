@@ -11,7 +11,7 @@
 #define BCDEC_STATIC
 #define WINE_UNUSED 1
 #define BCDEC_IMPLEMENTATION
-#include "../../../../dlls/d3dx9_36/bcdec.h"
+#include "../../../wine/dlls/d3dx9_36/bcdec.h"
 #undef BCDEC_IMPLEMENTATION
 #undef WINE_UNUSED
 #undef BCDEC_STATIC
