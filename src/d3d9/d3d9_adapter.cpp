@@ -200,6 +200,16 @@ namespace dxvk {
     if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
+#ifdef __OHOS__
+    if (m_adapter->isRelaxedDriver()) {
+      if (CheckFormat == D3D9Format::DXT1 || CheckFormat == D3D9Format::DXT2
+       || CheckFormat == D3D9Format::DXT3 || CheckFormat == D3D9Format::DXT4
+       || CheckFormat == D3D9Format::DXT5) {
+        return D3D_OK;
+      }
+    }
+#endif
+
     if (mapping.FormatSrgb  == VK_FORMAT_UNDEFINED && srgb)
       return D3DERR_NOTAVAILABLE;
 
@@ -211,7 +221,12 @@ namespace dxvk {
     if (unlikely(mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED)) {
       format = mapping.ConversionFormatInfo.FormatColor;
     }
-    return CheckDeviceVkFormat(format, Usage, RType);
+    HRESULT hr = CheckDeviceVkFormat(format, Usage, RType);
+#ifdef __OHOS__
+    if (FAILED(hr))
+      Logger::warn(str::format("D3D9 CheckDeviceFormat: fmt=", CheckFormat, " vkfmt=", format, " usage=0x", std::hex, Usage, " rtype=", RType, " -> FAIL"));
+#endif
+    return hr;
   }
 
 
@@ -885,6 +900,29 @@ namespace dxvk {
       if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
         m_modes.push_back(mode);
     }
+
+#ifdef __OHOS__
+    // On OHOS, the display may only report a single native resolution.
+    // Add standard resolutions that games expect to find.
+    if (m_adapter->isRelaxedDriver() && !m_modes.empty()) {
+      DWORD refreshRate = m_modes[0].RefreshRate;
+      static const struct { UINT w, h; } stdModes[] = {
+        { 640, 480 }, { 800, 600 }, { 1024, 768 },
+        { 1280, 720 }, { 1280, 1024 }, { 1366, 768 },
+        { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 },
+      };
+      for (auto& sm : stdModes) {
+        D3DDISPLAYMODEEX mode = {};
+        mode.Width = sm.w;
+        mode.Height = sm.h;
+        mode.RefreshRate = refreshRate;
+        mode.Format = static_cast<D3DFORMAT>(Format);
+        mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+        if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
+          m_modes.push_back(mode);
+      }
+    }
+#endif
 
     // Sort display modes by width, height and refresh rate (descending), in that order.
     // Some games rely on correct ordering, e.g. Prince of Persia (2008) expects the highest

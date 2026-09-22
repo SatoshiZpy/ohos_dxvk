@@ -7,11 +7,14 @@
 
 #include "d3d11_bc.h"
 
-/* Reuse Wine's already-vendored, MIT-licensed BC decoder. */
+/* Reuse Wine's already-vendored, MIT-licensed BC decoder.
+ * The Wine source root is injected as an include path by the build
+ * scripts (cross-file -I), so this source has no hard-coded dependency
+ * on the Wine tree layout while still naming the header's origin. */
 #define BCDEC_STATIC
 #define WINE_UNUSED 1
 #define BCDEC_IMPLEMENTATION
-#include "../../../wine/dlls/d3dx9_36/bcdec.h"
+#include "dlls/d3dx9_36/bcdec.h"
 #undef BCDEC_IMPLEMENTATION
 #undef WINE_UNUSED
 #undef BCDEC_STATIC

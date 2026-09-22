@@ -172,7 +172,7 @@ namespace dxvk {
   bool DxvkAdapter::checkFeatureSupport(const DxvkDeviceFeatures& required) const {
 #ifdef __OHOS__
     if (isRelaxedDriver()) {
-      // On Maleoon driver, log missing features as warnings instead of failing
+      Logger::info("OHOS: isRelaxedDriver()=true, skipping feature checks");
       if (required.core.features.dualSrcBlend && !m_deviceFeatures.core.features.dualSrcBlend)
         Logger::warn("OHOS: missing Vulkan feature dualSrcBlend");
       if (required.core.features.multiViewport && !m_deviceFeatures.core.features.multiViewport)
@@ -183,8 +183,11 @@ namespace dxvk {
         Logger::warn("OHOS: missing Vulkan feature transformFeedback");
       if (required.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor && !m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
         Logger::warn("OHOS: missing Vulkan feature vertexAttributeInstanceRateDivisor");
+      if (required.core.features.shaderInt64 && !m_deviceFeatures.core.features.shaderInt64)
+        Logger::warn("OHOS: missing Vulkan feature shaderInt64 (relaxed, skipping)");
       return true;
     }
+    Logger::info("OHOS: isRelaxedDriver()=false, strict feature checks");
 #endif
     return CHECK_FEATURE_NEED(core.features.robustBufferAccess)
         && CHECK_FEATURE_NEED(core.features.fullDrawIndexUint32)

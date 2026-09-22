@@ -383,6 +383,18 @@ namespace dxvk {
         return hr;
     }
 
+#ifdef __OHOS__
+    Logger::info(str::format("D3D9 CreateDevice: adapter=", Adapter,
+      " type=", DeviceType, " hwnd=", hFocusWindow,
+      " flags=0x", std::hex, BehaviorFlags,
+      " backbuffer=", pPresentationParameters->BackBufferWidth, "x", pPresentationParameters->BackBufferHeight,
+      " fmt=", pPresentationParameters->BackBufferFormat,
+      " windowed=", pPresentationParameters->Windowed,
+      " refresh=", pPresentationParameters->FullScreen_RefreshRateInHz,
+      " swap=", pPresentationParameters->SwapEffect,
+      " depth=", pPresentationParameters->AutoDepthStencilFormat));
+#endif
+
     auto* adapter = GetAdapter(Adapter);
 
     if (adapter == nullptr)
