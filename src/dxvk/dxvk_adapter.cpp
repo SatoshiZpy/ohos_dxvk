@@ -17,6 +17,12 @@ namespace dxvk {
     this->queryDeviceInfo();
     this->queryDeviceFeatures();
     this->queryDeviceQueues();
+#ifdef __OHOS__
+    if (isRelaxedDriver()) {
+      Logger::info("OHOS: physical device supported features (before feature-level selection)");
+      this->logFeatures(m_deviceFeatures);
+    }
+#endif
 
     m_hasMemoryBudget = m_deviceExtensions.supports(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
   }
@@ -120,7 +126,8 @@ namespace dxvk {
         Logger::warn("OHOS: missing Vulkan feature textureCompressionBC");
       if (required.extTransformFeedback.transformFeedback && !m_deviceFeatures.extTransformFeedback.transformFeedback)
         Logger::warn("OHOS: missing Vulkan feature transformFeedback");
-      return true;
+      // Relaxed callers may omit features they emulate, but every feature
+      // still requested must be supported by vkCreateDevice.
     }
 #endif
     return (m_deviceFeatures.core.features.robustBufferAccess
@@ -261,6 +268,8 @@ namespace dxvk {
                 || !required.extRobustness2.nullDescriptor)
         && (m_deviceFeatures.extTransformFeedback.transformFeedback
                 || !required.extTransformFeedback.transformFeedback)
+        && (m_deviceFeatures.extTransformFeedback.geometryStreams
+                || !required.extTransformFeedback.geometryStreams)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
                 || !required.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor
@@ -501,7 +510,7 @@ namespace dxvk {
     }
 
     if (vr != VK_SUCCESS)
-      throw DxvkError("DxvkAdapter: Failed to create device");
+      throw DxvkError(str::format("DxvkAdapter: vkCreateDevice failed, VkResult=", vr));
     
     Rc<DxvkDevice> result = new DxvkDevice(instance, this,
       new vk::DeviceFn(true, m_vki->instance(), device),
@@ -818,6 +827,7 @@ namespace dxvk {
       "\n  shaderFloat64                          : ", features.core.features.shaderFloat64 ? "1" : "0",
       "\n  shaderInt64                            : ", features.core.features.shaderInt64 ? "1" : "0",
       "\n  variableMultisampleRate                : ", features.core.features.variableMultisampleRate ? "1" : "0",
+      "\n  shaderDrawParameters                   : ", features.shaderDrawParameters.shaderDrawParameters ? "1" : "0",
       "\n", VK_EXT_4444_FORMATS_EXTENSION_NAME,
       "\n  formatA4R4G4B4                         : ", features.ext4444Formats.formatA4R4G4B4 ? "1" : "0",
       "\n  formatA4B4G4R4                         : ", features.ext4444Formats.formatA4B4G4R4 ? "1" : "0",

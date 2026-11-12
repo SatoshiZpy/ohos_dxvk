@@ -92,7 +92,7 @@ extern "C" {
         __uuidof(ID3D11Device),
         reinterpret_cast<void**>(ppDevice));
     } catch (const DxvkError& e) {
-      Logger::err("D3D11CoreCreateDevice: Failed to create D3D11 device");
+      Logger::err(str::format("D3D11CoreCreateDevice: Failed to create D3D11 device: ", e.message()));
       return E_FAIL;
     }
   }

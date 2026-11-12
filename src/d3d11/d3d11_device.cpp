@@ -805,6 +805,14 @@ namespace dxvk {
     if (!m_dxvkDevice->features().extTransformFeedback.transformFeedback)
       return DXGI_ERROR_INVALID_CALL;
 
+    // This compiler's stream-output path emits GeometryStreams SPIR-V even
+    // for stream zero. Reject it when the feature was not enabled, rather
+    // than feeding unsupported shader capabilities to the Vulkan driver.
+    if (!m_dxvkDevice->features().extTransformFeedback.geometryStreams) {
+      Logger::err("D3D11: Stream-output shaders require Vulkan geometryStreams");
+      return DXGI_ERROR_INVALID_CALL;
+    }
+
     // Zero-init some counterss so that we can increment
     // them while walking over the stream output entries
     DxbcXfbInfo xfb = { };
@@ -1994,7 +2002,16 @@ namespace dxvk {
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
       enabled.extTransformFeedback.transformFeedback              = VK_TRUE;
+#ifdef __OHOS__
+      // The opt-in compatibility path can run shaders without stream output.
+      // Keep unsupported stream-output shaders out of the Vulkan compiler below.
+      enabled.extTransformFeedback.geometryStreams = adapter->isRelaxedDriver()
+        ? supported.extTransformFeedback.geometryStreams : VK_TRUE;
+      if (adapter->isRelaxedDriver() && !supported.extTransformFeedback.geometryStreams)
+        Logger::warn("OHOS: geometryStreams unavailable; stream-output shaders disabled");
+#else
       enabled.extTransformFeedback.geometryStreams                = VK_TRUE;
+#endif
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
