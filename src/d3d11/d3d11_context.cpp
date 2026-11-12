@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "d3d11_context.h"
+#include "d3d11_bc.h"
 #include "d3d11_context_def.h"
 #include "d3d11_context_imm.h"
 
@@ -5571,6 +5572,20 @@ namespace dxvk {
     uint32_t dstSubresource = D3D11CalcSubresource(pDstSubresource->mipLevel,
       pDstSubresource->arrayLayer, pDstTexture->Desc()->MipLevels);
 
+    VkFormat uploadFormat = pDstTexture->GetPackedFormat();
+#ifdef __OHOS__
+    if (dstIsImage
+     && lookupFormatInfo(uploadFormat)->flags.test(DxvkFormatFlag::BlockCompressed)
+     && !pDstTexture->GetImage()->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed)) {
+      D3D11CpuImage decoded;
+      if (!DecodeD3D11BcImage(uploadFormat, DstExtent, StagingBuffer.mapPtr(0), 0, 0, decoded))
+        throw DxvkError("OHOS: BC update decode failed");
+      auto decodedSlice = AllocStagingBuffer(decoded.data.size());
+      std::memcpy(decodedSlice.mapPtr(0), decoded.data.data(), decoded.data.size());
+      StagingBuffer = std::move(decodedSlice);
+      uploadFormat = pDstTexture->GetImage()->info().format;
+    }
+#endif
     if (dstIsImage) {
       EmitCs([
         cDstImage         = pDstTexture->GetImage(),
@@ -5578,7 +5593,7 @@ namespace dxvk {
         cDstOffset        = DstOffset,
         cDstExtent        = DstExtent,
         cStagingSlice     = std::move(StagingBuffer),
-        cPackedFormat     = pDstTexture->GetPackedFormat()
+        cPackedFormat     = uploadFormat
       ] (DxvkContext* ctx) {
         ctx->copyBufferToImage(cDstImage,
           cDstLayers, cDstOffset, cDstExtent,

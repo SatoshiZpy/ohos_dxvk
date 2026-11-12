@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../dxvk/dxvk_include.h"
+#include <vulkan/vulkan_core.h>
 
 #ifdef __OHOS__
 namespace dxvk {

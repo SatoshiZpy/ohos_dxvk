@@ -710,6 +710,20 @@ namespace dxvk {
 
     auto subresourceLayout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
 
+#ifdef __OHOS__
+    if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)
+     && !pResource->GetImage()->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed)) {
+      D3D11_BOX box = { UINT(region.Offset.x), UINT(region.Offset.y), UINT(region.Offset.z),
+        UINT(region.Offset.x) + region.Extent.width,
+        UINT(region.Offset.y) + region.Extent.height,
+        UINT(region.Offset.z) + region.Extent.depth };
+      UpdateTexture(pResource, Subresource, &box,
+        pResource->GetMapPtr(Subresource, pResource->ComputeMappedOffset(Subresource, 0, region.Offset)),
+        subresourceLayout.RowPitch, subresourceLayout.DepthPitch);
+      return;
+    }
+#endif
+
     // Update dirty region one aspect at a time, due to
     // how the data is laid out in the staging buffer.
     for (uint32_t i = 0; i < pResource->GetPlaneCount(); i++) {

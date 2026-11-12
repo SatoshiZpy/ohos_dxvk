@@ -870,48 +870,51 @@ namespace dxvk {
     }
 
 #ifdef __OHOS__
-    // Maleoon driver may report BC format support but fail to create BC images.
-    // Force remap on Maleoon to avoid E_INVALIDARG at texture creation.
-    if (device->adapter()->isRelaxedDriver()) {
-      Logger::info("OHOS: Maleoon driver, remapping BC formats to uncompressed");
-      const VkComponentMapping swizzle = {
-        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-
-      // BC1 (DXT1) -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC1_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC1_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC1_UNORM_SRGB,  VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
-
-      // BC2 (DXT3) -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC2_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC2_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC2_UNORM_SRGB, VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
-
-      // BC3 (DXT5) -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC3_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC3_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC3_UNORM_SRGB, VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
-
-      // BC4 (ATI1) -> R8
-      RemapColorFormat(DXGI_FORMAT_BC4_TYPELESS, VK_FORMAT_R8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC4_UNORM,    VK_FORMAT_R8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC4_SNORM,    VK_FORMAT_R8_SNORM, swizzle);
-
-      // BC5 (ATI2) -> R8G8
-      RemapColorFormat(DXGI_FORMAT_BC5_TYPELESS, VK_FORMAT_R8G8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC5_UNORM,    VK_FORMAT_R8G8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC5_SNORM,    VK_FORMAT_R8G8_SNORM, swizzle);
-
-      // BC6H (HDR) -> R16G16B16A16_SFLOAT
-      RemapColorFormat(DXGI_FORMAT_BC6H_TYPELESS, VK_FORMAT_R16G16B16A16_SFLOAT, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC6H_UF16,    VK_FORMAT_R16G16B16A16_SFLOAT, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC6H_SF16,    VK_FORMAT_R16G16B16A16_SFLOAT, swizzle);
-
-      // BC7 -> R8G8B8A8
-      RemapColorFormat(DXGI_FORMAT_BC7_TYPELESS,   VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC7_UNORM,      VK_FORMAT_R8G8B8A8_UNORM, swizzle);
-      RemapColorFormat(DXGI_FORMAT_BC7_UNORM_SRGB,  VK_FORMAT_R8G8B8A8_SRGB,  swizzle);
+    // Query complete format families: the BC feature bit alone does not
+    // guarantee that every BC format is usable on OHOS drivers.
+    struct BcFamily {
+      DXGI_FORMAT first;
+      VkFormat linear;
+      VkFormat alternate;
+    };
+    const BcFamily families[] = {
+      { DXGI_FORMAT_BC1_TYPELESS, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB },
+      { DXGI_FORMAT_BC2_TYPELESS, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB },
+      { DXGI_FORMAT_BC3_TYPELESS, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB },
+      { DXGI_FORMAT_BC4_TYPELESS, VK_FORMAT_R8_UNORM, VK_FORMAT_R8_SNORM },
+      { DXGI_FORMAT_BC5_TYPELESS, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8_SNORM },
+      { DXGI_FORMAT_BC6H_TYPELESS, VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT },
+      { DXGI_FORMAT_BC7_TYPELESS, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB },
+    };
+    const VkComponentMapping swizzle = {
+      VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+      VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+    for (const auto& family : families) {
+      bool supported = device->features().core.features.textureCompressionBC;
+      for (uint32_t i = 1; i < 3; i++) {
+        const VkFormat format = g_dxgiFormats[family.first + i].FormatColor;
+        const auto features = device->getFormatFeatures(format).optimal;
+        const VkFormatFeatureFlags2 required = VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT
+          | VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT
+          | VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+        DxvkFormatQuery query = { };
+        query.format = format;
+        query.type = VK_IMAGE_TYPE_2D;
+        query.tiling = VK_IMAGE_TILING_OPTIMAL;
+        query.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+          | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        supported &= (features & required) == required
+                  && device->adapter()->getFormatLimits(query).has_value();
+      }
+      if (supported) continue;
+      Logger::info(str::format("OHOS: BC CPU fallback DXGI family ", family.first,
+        " -> ", family.linear, "/", family.alternate));
+      for (uint32_t i = 0; i < 3; i++) {
+        const auto format = DXGI_FORMAT(family.first + i);
+        RemapColorFormat(format, i == 2 ? family.alternate : family.linear, swizzle);
+        // Never put the original compressed view formats on a decoded image.
+        m_dxgiFamilies[format] = DXGI_VK_FORMAT_FAMILY { family.linear, family.alternate };
+      }
     }
 #endif
   }
